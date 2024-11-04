@@ -1,5 +1,9 @@
 #include "light_switch.h"
+#include "switch_groups.h"
+#include "esphome/core/application.h"
+#include "esphome/core/helpers.h"
 #include "esphome/core/log.h"
+#include "esphome.h"
 
 namespace esphome {
 namespace light_switch {
@@ -9,7 +13,7 @@ namespace light_switch {
 static const char *const TAG = "light_switch";
   
 void LightSwitch::setup() {
-  register_service(&LightSwitch::process_command, this->name, {"command"});
+  // register_service(&LightSwitch::process_command, this->name, {"command"});
 }
 
 void LightSwitch::single_click() {
@@ -19,7 +23,7 @@ void LightSwitch::single_click() {
   ESP_LOGD(TAG, "'%s': Single clicked.", this->get_name().c_str());
 
   if (this->is_hass())
-    send_hass_event("single_click")
+    send_hass_event("single_click");
   else
     this->toggle_or_turn_off();
 }
@@ -30,7 +34,7 @@ void LightSwitch::double_click() {
   this->last_double_click_time = millis();
 
   if (this->is_hass())
-    send_hass_event("double_click")
+    send_hass_event("double_click");
   else
     this->turn_all_switches_on();
 }
@@ -39,7 +43,7 @@ void LightSwitch::long_click() {
   ESP_LOGD(TAG, "'%s': Long clicked.", this->get_name().c_str());
 
   if (this->is_hass())
-    send_hass_event("long_click")
+    send_hass_event("long_click");
   else
     this->long_click_action();
 }
@@ -112,10 +116,6 @@ void LightSwitch::toggle_or_turn_off() {
   ESP_LOGD(TAG, "'%s': Toggle or turn OFF.", this->get_name().c_str());
   this->groups.toggle_or_turn_off();
 }
-
-}  // namespace light_switch
-}  // namespace esphome
-
 
 }  // namespace light_switch
 }  // namespace esphome

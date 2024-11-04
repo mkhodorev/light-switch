@@ -28,7 +28,7 @@ class SwitchGroups {
   bool is_include_in_group(std::vector<switch_::Switch*> group, switch_::Switch* sw);
   bool is_any_switches_on();
   void turn_group_on_by_id(uint8_t id);
-}
+};
 
 }  // namespace light_switch
 }  // namespace esphome

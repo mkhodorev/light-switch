@@ -2,7 +2,10 @@
 
 #include "esphome/core/component.h"
 #include "esphome/core/automation.h"
+// #include "esphome/components/api/custom_api_device.h"
 #include "esphome/core/helpers.h"
+#include "switch_groups.h"
+#include "esphome.h"
 
 // Declare a service
 //  - Service will be called "esphome.light_switch" in Home Assistant.
@@ -26,7 +29,7 @@ if ((obj) != nullptr) { \
   } \
 }
 
-class LightSwitch public CustomAPIDevice {
+class LightSwitch : public Component {
  public:
   void setup();
   void single_click();
@@ -34,9 +37,11 @@ class LightSwitch public CustomAPIDevice {
   void long_click();
 
   private:
+  std::string name;
   SwitchGroups groups;
   uint32_t last_double_click_time = 0;
 
+  std::string get_name() { return this->name; }
   void long_click_action();
   bool is_hass();
   bool api_is_connected();
@@ -47,7 +52,7 @@ class LightSwitch public CustomAPIDevice {
   void turn_all_switches_off();
   void toggle();
   void toggle_or_turn_off();
-}
+};
 
 }  // namespace light_switch
 }  // namespace esphome
