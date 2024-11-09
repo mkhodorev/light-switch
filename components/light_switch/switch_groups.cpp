@@ -7,13 +7,17 @@ namespace light_switch {
 
 #define TURN_OFF_INTERVAL_MS 2000
 
-SwitchGroups::SwitchGroups() {
+SwitchGroups::SwitchGroups(std::vector<std::vector<switch_::Switch *>> groups) {
   // first group is all switches off
-  this->groups.push_back(std::vector<switch_::Switch*>());
+  this->groups.push_back(std::vector<switch_::Switch *>());
   this->active_group = 0;
+
+  for (int i = 0; i < groups.size(); i++) {
+    this->add_group(groups[i]);
+  }
 }
 
-void SwitchGroups::add_group(std::vector<switch_::Switch*> group) {
+void SwitchGroups::add_group(std::vector<switch_::Switch *> group) {
   this->groups.push_back(group);
   this->add_to_all_switches(group);
 }
@@ -38,7 +42,7 @@ void SwitchGroups::turn_all_switches_off() {
 void SwitchGroups::toggle() {
   if (!this->is_any_switches_on() && this->active_group > 0)
     this->active_group = 0;
-  
+
   int next_id = this->active_group + 1;
   if (next_id >= this->groups.size())
     next_id = 0;
@@ -57,18 +61,18 @@ void SwitchGroups::toggle_or_turn_off() {
 }
 
 // private:
-void SwitchGroups::add_to_all_switches(std::vector<switch_::Switch*> group) {
+void SwitchGroups::add_to_all_switches(std::vector<switch_::Switch *> group) {
   for (int i = 0; i < group.size(); i++) {
     if (!this->is_include_in_all_switches(group[i]))
       this->all_switches.push_back(group[i]);
   }
 }
 
-bool SwitchGroups::is_include_in_all_switches(switch_::Switch* sw) {
+bool SwitchGroups::is_include_in_all_switches(switch_::Switch *sw) {
   return this->is_include_in_group(this->all_switches, sw);
 }
 
-bool SwitchGroups::is_include_in_group(std::vector<switch_::Switch*> group, switch_::Switch* sw) {
+bool SwitchGroups::is_include_in_group(std::vector<switch_::Switch *> group, switch_::Switch *sw) {
   for (int i = 0; i < group.size(); i++) {
     if (sw == group[i])
       return true;
