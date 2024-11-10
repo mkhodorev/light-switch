@@ -7,10 +7,6 @@ namespace ha_enabled_switch {
 static const char *const TAG = "ha_enabled_switch";
 
 void HaEnabledSwitch::setup() {
-  this->set_name("Enabled HA");
-  this->set_icon("mdi:home-assistant");
-  this->set_restore_mode(switch_::SWITCH_RESTORE_DEFAULT_OFF);
-
   optional<bool> initial_state = this->get_initial_state();
 
   if (initial_state.has_value()) {
