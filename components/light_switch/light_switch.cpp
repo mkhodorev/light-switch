@@ -6,58 +6,41 @@ namespace esphome {
 namespace light_switch {
 
 static const char *const TAG = "light_switch";
+std::string LightSwitch::service_name = "";
 
 void LightSwitch::setup() {
-  //     register_service(&LightSwitch::process_command, this->name, {"command"});
+  // Declare a command service
+  //  - Service will be called "esphome.<node_name>_<name>" in Home Assistant.
+  //  - The service has one argument (type inferred from method definition):
+  //     - command: string
+  this->register_service(&LightSwitch::process_ha_command, this->get_id(), {"command"});
 }
 
-// template<typename... Ts> class UserServiceTrigger : public UserServiceBase<Ts...>, public Trigger<Ts...> {
-//  public:
-//   UserServiceTrigger(const std::string &name, const std::array<std::string, sizeof...(Ts)> &arg_names)
-//       : UserServiceBase<Ts...>(name, arg_names) {}
+void LightSwitch::set_service_name(const std::string &value) {
+  if (LightSwitch::service_name.empty())
+    LightSwitch::service_name = value;
+}
 
-//  protected:
-//   void execute(Ts... x) override { this->trigger(x...); }  // NOLINT
-// };
+void LightSwitch::dump_config() {
+  ESP_LOGCONFIG(TAG, "Light Switch '%s'", this->get_id().c_str());
+  ESP_LOGCONFIG(TAG, "  Register service '%s_%s'", LightSwitch::service_name.c_str(), this->get_id().c_str());
+  ESP_LOGCONFIG(TAG, "  Publishes events '%s.light_switch'", LightSwitch::service_name.c_str());
+  this->groups->dump_config(TAG);
+}
 
-// template<typename T, typename... Ts> class UserServiceTrigger : public UserServiceBase<Ts...> {
-//  public:
-//   UserServiceTrigger(const std::string &name, const std::array<std::string, sizeof...(Ts)> &arg_names, T *obj,
-//                      void (T::*callback)(Ts...))
-//       : UserServiceBase<Ts...>(name, arg_names), obj_(obj), callback_(callback) {}
+void LightSwitch::set_ha_enabled_switch(ha_enabled_switch::HaEnabledSwitch *ha_enabled_switch) {
+  this->ha_enabled_switch = ha_enabled_switch;
+}
 
-//  protected:
-//   void execute(Ts... x) override { (this->obj_->*this->callback_)(x...); }  // NOLINT
-
-//   T *obj_;
-//   void (T::*callback_)(Ts...);
-// };
-
-// template<typename T, typename... Ts> class CustomAPIDeviceService : public UserServiceBase<Ts...> {
-//  public:
-//   CustomAPIDeviceService(const std::string &name, const std::array<std::string, sizeof...(Ts)> &arg_names, T *obj,
-//                          void (T::*callback)(Ts...))
-//       : UserServiceBase<Ts...>(name, arg_names), obj_(obj), callback_(callback) {}
-
-//  protected:
-//   void execute(Ts... x) override { (this->obj_->*this->callback_)(x...); }  // NOLINT
-
-//   T *obj_;
-//   void (T::*callback_)(Ts...);
-// };
-
-// template<typename T, typename... Ts>
-// void LightSwitch::register_service(void (T::*callback)(Ts...), const std::string &name,
-//                                    const std::array<std::string, sizeof...(Ts)> &arg_names) {
-//   auto *service = new CustomAPIDeviceService<T, Ts...>(name, arg_names, (T *) this, callback);  // NOLINT
-//   global_api_server->register_user_service(service);
-// }
+void LightSwitch::init_groups(std::vector<std::vector<switch_::Switch *>> groups) {
+  this->groups = new SwitchGroups(groups);
+}
 
 void LightSwitch::single_click() {
   if (!this->is_allowed_single_click())
     return;
 
-  ESP_LOGD(TAG, "'%s': Single clicked.", this->id.c_str());
+  ESP_LOGD(TAG, "'%s': Single clicked.", this->get_id().c_str());
 
   if (this->is_ha_available())
     send_ha_event("single_click");
@@ -66,7 +49,7 @@ void LightSwitch::single_click() {
 }
 
 void LightSwitch::double_click() {
-  ESP_LOGD(TAG, "'%s': Double clicked.", this->id.c_str());
+  ESP_LOGD(TAG, "'%s': Double clicked.", this->get_id().c_str());
 
   this->last_double_click_time = millis();
 
@@ -77,25 +60,19 @@ void LightSwitch::double_click() {
 }
 
 void LightSwitch::long_click() {
-  ESP_LOGD(TAG, "'%s': Long clicked.", this->id.c_str());
+  ESP_LOGD(TAG, "'%s': Long clicked.", this->get_id().c_str());
 
   if (this->is_ha_available())
     send_ha_event("long_click");
   else
-    this->long_click_action();
+    this->long_click_callback_.call();
 }
 
-void LightSwitch::init_groups(std::vector<std::vector<switch_::Switch *>> groups) {
-  this->groups = new SwitchGroups(groups);
+void LightSwitch::add_on_long_click_callback(std::function<void()> &&callback) {
+  this->long_click_callback_.add(std::move(callback));
 }
 
 // protected
-void LightSwitch::long_click_action() {
-  // if(this->long_click_script != nullptr)
-  //   id(this->long_click_script).execute();
-  ESP_LOGD(TAG, "'%s': Long clicked!", this->id.c_str());
-}
-
 bool LightSwitch::is_ha_available() {
   return this->api_is_connected() && this->ha_enabled_switch && this->ha_enabled_switch->state;
 }
@@ -105,20 +82,12 @@ bool LightSwitch::api_is_connected() {
 }
 
 void LightSwitch::send_ha_event(const std::string action) {
-  api::HomeassistantServiceResponse resp;
-  resp.service = "light_switch";
+  std::map<std::string, std::string> data = {
+      {"id", this->get_id()},
+      {"action", action},
+  };
 
-  api::HomeassistantServiceMap id_kv;
-  id_kv.key = "id";
-  id_kv.value = this->id;
-  resp.data.push_back(id_kv);
-
-  api::HomeassistantServiceMap action_kv;
-  action_kv.key = "action";
-  action_kv.value = action;
-  resp.data.push_back(action_kv);
-
-  api::global_api_server->send_homeassistant_service_call(resp);
+  this->fire_homeassistant_event(LightSwitch::service_name + ".light_switch", data);
 }
 
 void LightSwitch::process_ha_command(std::string command) {
@@ -139,22 +108,22 @@ bool LightSwitch::is_allowed_single_click() {
 }
 
 void LightSwitch::turn_all_switches_on() {
-  ESP_LOGD(TAG, "'%s': Turn all switches ON.", this->id.c_str());
+  ESP_LOGD(TAG, "'%s': Turn all switches ON.", this->get_id().c_str());
   this->groups->turn_all_switches_on();
 }
 
 void LightSwitch::turn_all_switches_off() {
-  ESP_LOGD(TAG, "'%s': Turn all switches OFF.", this->id.c_str());
+  ESP_LOGD(TAG, "'%s': Turn all switches OFF.", this->get_id().c_str());
   this->groups->turn_all_switches_off();
 }
 
 void LightSwitch::toggle() {
-  ESP_LOGD(TAG, "'%s': Toggle.", this->id.c_str());
+  ESP_LOGD(TAG, "'%s': Toggle.", this->get_id().c_str());
   this->groups->toggle();
 }
 
 void LightSwitch::toggle_or_turn_off() {
-  ESP_LOGD(TAG, "'%s': Toggle or turn OFF.", this->id.c_str());
+  ESP_LOGD(TAG, "'%s': Toggle or turn OFF.", this->get_id().c_str());
   this->groups->toggle_or_turn_off();
 }
 

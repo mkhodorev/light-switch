@@ -15,6 +15,7 @@ class SwitchGroups {
   void turn_all_switches_off();
   void toggle();
   void toggle_or_turn_off();
+  void dump_config(const char *tag);
 
  private:
   std::vector<switch_::Switch *> all_switches;

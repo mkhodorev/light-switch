@@ -1,6 +1,5 @@
 #include "switch_groups.h"
-#include "esphome/core/application.h"
-#include "esphome/components/switch/switch.h"
+#include "esphome.h"
 
 namespace esphome {
 namespace light_switch {
@@ -12,9 +11,8 @@ SwitchGroups::SwitchGroups(std::vector<std::vector<switch_::Switch *>> groups) {
   this->groups.push_back(std::vector<switch_::Switch *>());
   this->active_group = 0;
 
-  for (int i = 0; i < groups.size(); i++) {
+  for (int i = 0; i < groups.size(); i++)
     this->add_group(groups[i]);
-  }
 }
 
 void SwitchGroups::add_group(std::vector<switch_::Switch *> group) {
@@ -43,11 +41,11 @@ void SwitchGroups::toggle() {
   if (!this->is_any_switches_on() && this->active_group > 0)
     this->active_group = 0;
 
-  int next_id = this->active_group + 1;
-  if (next_id >= this->groups.size())
-    next_id = 0;
+  this->active_group++;
+  if (this->active_group >= this->groups.size())
+    this->active_group = 0;
 
-  this->turn_group_on_by_id(next_id);
+  this->turn_group_on_by_id(this->active_group);
 }
 
 void SwitchGroups::toggle_or_turn_off() {
@@ -58,6 +56,23 @@ void SwitchGroups::toggle_or_turn_off() {
     this->turn_all_switches_off();
   else
     this->toggle();
+}
+
+void SwitchGroups::dump_config(const char *tag) {
+  ESP_LOGCONFIG(tag, "  Groups:");
+
+  for (int i = 1; i < this->groups.size(); i++) {
+    std::string group_ids = "";
+
+    for (int j = 0; j < this->groups[i].size(); j++) {
+      if (!group_ids.empty())
+        group_ids += ", ";
+
+      group_ids += this->groups[i][j]->get_object_id();
+    }
+
+    ESP_LOGCONFIG(tag, "    - [%s]", group_ids.c_str());
+  }
 }
 
 // private:
